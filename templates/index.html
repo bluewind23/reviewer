@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>네이버 스마트 크롤러</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            min-height: 100vh;
+            padding: 2rem 0;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0 !important;
+            border: none;
+            padding: 1.5rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.4);
+        }
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.25);
+        }
+        .progress {
+            height: 8px;
+            border-radius: 10px;
+            background-color: #e9ecef;
+        }
+        .progress-bar {
+            border-radius: 10px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .status-starting { background-color: #ffc107; color: white; }
+        .status-crawling { background-color: #17a2b8; color: white; }
+        .status-completed { background-color: #28a745; color: white; }
+        .status-failed { background-color: #dc3545; color: white; }
+        .nav-tabs .nav-link {
+            border-radius: 10px 10px 0 0;
+            border: none;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .table thead th {
+            border: none;
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        .crawler-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .crawler-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container main-container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10">
+                <!-- 헤더 -->
+                <div class="text-center mb-4">
+                    <h1 class="text-white mb-3">
+                        <i class="fas fa-spider"></i> 네이버 스마트 크롤러
+                    </h1>
+                    <p class="text-white-50">URL을 입력하면 자동으로 크롤링해드립니다</p>
+                </div>
+
+                <!-- 메인 탭 -->
+                <ul class="nav nav-tabs mb-4" id="mainTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="crawl-tab" data-bs-toggle="tab" href="#crawl">
+                            <i class="fas fa-play"></i> 즉시 크롤링
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="products-tab" data-bs-toggle="tab" href="#products">
+                            <i class="fas fa-list"></i> 상품 관리
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="settings-tab" data-bs-toggle="tab" href="#settings">
+                            <i class="fas fa-cog"></i> 설정
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- 즉시 크롤링 탭 -->
+                    <div class="tab-pane fade show active" id="crawl">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-rocket"></i> 즉시 크롤링</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="crawlForm">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <div class="mb-3">
+                                                <label class="form-label">상품 URL</label>
+                                                <input type="url" class="form-control" id="productUrl" 
+                                                       placeholder="https://smartstore.naver.com/..." required>
+                                                <div class="form-text">네이버 스마트스토어 또는 쇼핑 URL을 입력하세요</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label class="form-label">크롤러 선택</label>
+                                                <select class="form-control" id="crawlerType">
+                                                    <option value="auto">자동 (권장)</option>
+                                                    <option value="stealth">스텔스 크롤러</option>
+                                                    <option value="selenium">셀레니움 크롤러</option>
+                                                    <option value="mobile">모바일 크롤러</option>
+                                                    <option value="advanced">고급 크롤러</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">상품명 (선택사항)</label>
+                                        <input type="text" class="form-control" id="productName" 
+                                               placeholder="상품명을 입력하면 결과 파일명에 포함됩니다">
+                                    </div>
+
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                        <button type="button" class="btn btn-outline-primary" id="extractBtn">
+                                            <i class="fas fa-search"></i> 상품 ID 확인
+                                        </button>
+                                        <button type="submit" class="btn btn-primary" id="startCrawlBtn">
+                                            <i class="fas fa-play"></i> 크롤링 시작
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- 진행 상태 -->
+                                <div id="progressSection" class="mt-4" style="display: none;">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <span id="progressIcon" class="status-icon status-starting">
+                                                    <i class="fas fa-hourglass-start"></i>
+                                                </span>
+                                                진행 상태
+                                            </h6>
+                                            <div class="progress mb-2">
+                                                <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+                                            </div>
+                                            <p id="progressMessage" class="mb-0">크롤링을 준비중입니다...</p>
+                                            <div id="progressResult" class="mt-3" style="display: none;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 상품 관리 탭 -->
+                    <div class="tab-pane fade" id="products">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="fas fa-box"></i> 상품 관리</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- 상품 추가 폼 -->
+                                <form id="addProductForm" class="mb-4">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <input type="url" class="form-control" id="newProductUrl" 
+                                                   placeholder="상품 URL" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="text" class="form-control" id="newProductName" 
+                                                   placeholder="상품명">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="submit" class="btn btn-primary w-100">
+                                                <i class="fas fa-plus"></i> 추가
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                <!-- 상품 목록 -->
+                                <div id="productsList">
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">로딩중...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 설정 탭 -->
+                    <div class="tab-pane fade" id="settings">
+                        <div class="row">
+                            <!-- VPN 설정 -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0"><i class="fas fa-shield-alt"></i> VPN 설정</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="vpnForm">
+                                            <div class="mb-3">
+                                                <label class="form-label">VPN 제공업체</label>
+                                                <select class="form-control" id="vpnProvider">
+                                                    <option value="expressvpn">ExpressVPN</option>
+                                                    <option value="nordvpn">NordVPN</option>
+                                                    <option value="surfshark">SurfShark</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">서버 국가</label>
+                                                <input type="text" class="form-control" id="vpnCountries" 
+                                                       placeholder="japan,singapore,australia">
+                                                <div class="form-text">쉼표로 구분하여 입력</div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-save"></i> 저장
+                                            </button>
+                                        </form>
+                                        <hr>
+                                        <div id="vpnStatus" class="text-muted">VPN 상태 확인중...</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 스케줄 설정 -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0"><i class="fas fa-clock"></i> 스케줄 설정</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="scheduleForm">
+                                            <div class="mb-3">
+                                                <label class="form-label">자동 실행 시간</label>
+                                                <input type="text" class="form-control" id="scheduleTime" 
+                                                       placeholder="02:00,03:30,05:00">
+                                                <div class="form-text">24시간 형식, 쉼표로 구분</div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">재시도 간격 (시간)</label>
+                                                <input type="number" class="form-control" id="retryInterval" 
+                                                       value="6" min="1" max="24">
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-save"></i> 저장
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div class="modal fade" id="alertModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="alertModalTitle">알림</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="alertModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentJobId = null;
+        let progressInterval = null;
+
+        // 페이지 로드시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+            loadSettings();
+            loadVpnStatus();
+        });
+
+        // 상품 ID 추출
+        document.getElementById('extractBtn').addEventListener('click', function() {
+            const url = document.getElementById('productUrl').value.trim();
+            if (!url) {
+                showAlert('오류', 'URL을 입력해주세요.');
+                return;
+            }
+
+            fetch('/api/extract_product_id', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({url: url})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('성공', data.message);
+                } else {
+                    showAlert('오류', data.error);
+                }
+            })
+            .catch(error => {
+                showAlert('오류', '네트워크 오류가 발생했습니다.');
+            });
+        });
+
+        // 크롤링 시작
+        document.getElementById('crawlForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const url = document.getElementById('productUrl').value.trim();
+            const name = document.getElementById('productName').value.trim();
+            const crawler = document.getElementById('crawlerType').value;
+
+            if (!url) {
+                showAlert('오류', 'URL을 입력해주세요.');
+                return;
+            }
+
+            const startBtn = document.getElementById('startCrawlBtn');
+            startBtn.disabled = true;
+            startBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 시작중...';
+
+            fetch('/api/start_crawl', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({url: url, name: name, crawler: crawler})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentJobId = data.job_id;
+                    document.getElementById('progressSection').style.display = 'block';
+                    startProgressTracking();
+                } else {
+                    showAlert('오류', data.error);
+                    startBtn.disabled = false;
+                    startBtn.innerHTML = '<i class="fas fa-play"></i> 크롤링 시작';
+                }
+            })
+            .catch(error => {
+                showAlert('오류', '네트워크 오류가 발생했습니다.');
+                startBtn.disabled = false;
+                startBtn.innerHTML = '<i class="fas fa-play"></i> 크롤링 시작';
+            });
+        });
+
+        // 진행상태 추적
+        function startProgressTracking() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+
+            progressInterval = setInterval(function() {
+                if (currentJobId) {
+                    fetch(`/api/job_status/${currentJobId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateProgress(data.job);
+                            
+                            if (data.job.status === 'completed' || data.job.status === 'failed') {
+                                clearInterval(progressInterval);
+                                progressInterval = null;
+                                
+                                const startBtn = document.getElementById('startCrawlBtn');
+                                startBtn.disabled = false;
+                                startBtn.innerHTML = '<i class="fas fa-play"></i> 크롤링 시작';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('진행상태 확인 오류:', error);
+                    });
+                }
+            }, 2000);
+        }
+
+        // 진행상태 업데이트
+        function updateProgress(job) {
+            const progressBar = document.getElementById('progressBar');
+            const progressMessage = document.getElementById('progressMessage');
+            const progressIcon = document.getElementById('progressIcon');
+            const progressResult = document.getElementById('progressResult');
+
+            progressBar.style.width = job.progress + '%';
+            progressMessage.textContent = job.message;
+
+            // 아이콘 및 상태 업데이트
+            progressIcon.className = 'status-icon status-' + job.status;
+            
+            switch(job.status) {
+                case 'starting':
+                case 'extracting':
+                case 'connecting_vpn':
+                    progressIcon.innerHTML = '<i class="fas fa-hourglass-start"></i>';
+                    break;
+                case 'crawling':
+                    progressIcon.innerHTML = '<i class="fas fa-spider"></i>';
+                    break;
+                case 'completed':
+                    progressIcon.innerHTML = '<i class="fas fa-check"></i>';
+                    if (job.result) {
+                        progressResult.innerHTML = `
+                            <div class="alert alert-success">
+                                <strong>크롤링 완료!</strong><br>
+                                결과 파일: <code>${job.result}</code><br>
+                                크롤러: ${job.crawler}
+                            </div>
+                        `;
+                        progressResult.style.display = 'block';
+                    }
+                    break;
+                case 'failed':
+                    progressIcon.innerHTML = '<i class="fas fa-times"></i>';
+                    if (job.error) {
+                        progressResult.innerHTML = `
+                            <div class="alert alert-danger">
+                                <strong>크롤링 실패!</strong><br>
+                                오류: ${job.error}
+                            </div>
+                        `;
+                        progressResult.style.display = 'block';
+                    }
+                    break;
+            }
+        }
+
+        // 상품 목록 로드
+        function loadProducts() {
+            fetch('/api/products')
+            .then(response => response.json())
+            .then(data => {
+                const productsList = document.getElementById('productsList');
+                
+                if (data.success && data.products.length > 0) {
+                    let html = '<div class="table-responsive"><table class="table table-hover">';
+                    html += '<thead><tr><th>상품명</th><th>상품 ID</th><th>성공/실패</th><th>마지막 크롤링</th><th>작업</th></tr></thead><tbody>';
+                    
+                    data.products.forEach(product => {
+                        const lastCrawl = product.last_crawl ? new Date(product.last_crawl).toLocaleString() : '없음';
+                        const stats = `${product.success_count || 0}/${product.fail_count || 0}`;
+                        
+                        html += `
+                            <tr>
+                                <td>${product.name}</td>
+                                <td><code>${product.id}</code></td>
+                                <td><span class="badge bg-success">${stats}</span></td>
+                                <td>${lastCrawl}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="removeProduct('${product.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table></div>';
+                    productsList.innerHTML = html;
+                } else {
+                    productsList.innerHTML = '<div class="text-center text-muted py-4">등록된 상품이 없습니다.</div>';
+                }
+            });
+        }
+
+        // 상품 추가
+        document.getElementById('addProductForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const url = document.getElementById('newProductUrl').value.trim();
+            const name = document.getElementById('newProductName').value.trim();
+
+            fetch('/api/add_product', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({url: url, name: name})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('성공', data.message);
+                    document.getElementById('newProductUrl').value = '';
+                    document.getElementById('newProductName').value = '';
+                    loadProducts();
+                } else {
+                    showAlert('오류', data.error);
+                }
+            });
+        });
+
+        // 상품 제거
+        function removeProduct(productId) {
+            if (confirm('정말 이 상품을 제거하시겠습니까?')) {
+                fetch(`/api/remove_product/${productId}`, {method: 'DELETE'})
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert('성공', data.message);
+                        loadProducts();
+                    } else {
+                        showAlert('오류', data.error);
+                    }
+                });
+            }
+        }
+
+        // VPN 설정
+        document.getElementById('vpnForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const provider = document.getElementById('vpnProvider').value;
+            const countries = document.getElementById('vpnCountries').value.split(',').map(s => s.trim());
+
+            fetch('/api/vpn_setup', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({provider: provider, countries: countries})
+            })
+            .then(response => response.json())
+            .then(data => {
+                showAlert(data.success ? '성공' : '오류', data.success ? data.message : data.error);
+                if (data.success) {
+                    loadVpnStatus();
+                }
+            });
+        });
+
+        // VPN 상태 로드
+        function loadVpnStatus() {
+            fetch('/api/vpn_status')
+            .then(response => response.json())
+            .then(data => {
+                const vpnStatus = document.getElementById('vpnStatus');
+                if (data.success) {
+                    const status = data.enabled ? `VPN 활성화됨 - 상태: ${data.status}` : 'VPN 비활성화됨';
+                    vpnStatus.innerHTML = `<i class="fas fa-info-circle"></i> ${status}`;
+                } else {
+                    vpnStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> VPN 상태 확인 실패';
+                }
+            });
+        }
+
+        // 설정 로드
+        function loadSettings() {
+            fetch('/api/settings')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const settings = data.settings;
+                    
+                    // VPN 설정
+                    if (settings.vpn) {
+                        document.getElementById('vpnProvider').value = settings.vpn.provider || 'expressvpn';
+                        document.getElementById('vpnCountries').value = (settings.vpn.countries || []).join(',');
+                    }
+                    
+                    // 스케줄 설정
+                    if (settings.schedule) {
+                        document.getElementById('scheduleTime').value = (settings.schedule.auto_run_times || []).join(',');
+                        document.getElementById('retryInterval').value = settings.schedule.retry_interval_hours || 6;
+                    }
+                }
+            });
+        }
+
+        // 알림 표시
+        function showAlert(title, message) {
+            document.getElementById('alertModalTitle').textContent = title;
+            document.getElementById('alertModalBody').textContent = message;
+            new bootstrap.Modal(document.getElementById('alertModal')).show();
+        }
+    </script>
+</body>
+</html>

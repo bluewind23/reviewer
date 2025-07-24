@@ -1,0 +1,34 @@
+# 1. 가상 환경 (Virtual Environment)
+# 개인 PC에만 필요한 라이브러리 설치 폴더
+venv/
+
+# 2. 파이썬 캐시 및 컴파일 파일
+# 실행 속도 향상을 위해 파이썬이 자동으로 생성하는 파일
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 3. 애플리케이션 출력 및 로그 (CLAUDE.md 기반)
+# 스크립트 실행 결과로 생성되는 데이터 및 로그
+logs/
+crawl_results/
+*.csv
+
+# 4. 빌드 결과물 (CLAUDE.md 기반)
+# build_exe.py 실행 시 생성되는 폴더 및 파일
+build/
+dist/
+*.spec
+*.exe
+
+# 5. 설정 파일 (CLAUDE.md 기반)
+# VPN 정보 등 민감하거나 개인화된 설정이 포함될 수 있는 파일
+crawler_config.json
+
+# 6. IDE 및 운영체제 파일
+# 개인의 개발 환경과 관련된 파일들
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

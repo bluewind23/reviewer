@@ -1,0 +1,38 @@
+{
+  "schedule": {
+    "auto_run_times": ["02:00", "03:30", "05:00"],
+    "timezone": "Asia/Seoul",
+    "retry_interval_hours": 6
+  },
+  "vpn": {
+    "enabled": true,
+    "provider": "expressvpn",
+    "countries": ["japan", "singapore", "australia"],
+    "connect_command": "expressvpn connect {country}",
+    "disconnect_command": "expressvpn disconnect",
+    "status_command": "expressvpn status"
+  },
+  "crawlers": {
+    "priority_order": ["stealth", "selenium", "mobile", "advanced"],
+    "max_retries_per_crawler": 2,
+    "delay_between_crawlers": 300
+  },
+  "output": {
+    "base_directory": "crawl_results",
+    "filename_pattern": "{product_id}_{timestamp}_{crawler}.csv",
+    "keep_logs_days": 30
+  },
+  "products": [
+    {
+      "id": "5753732771",
+      "url": "https://smartstore.naver.com/example/products/5753732771",
+      "name": "샘플 상품 1",
+      "priority": 1,
+      "added_date": "2024-01-23T10:30:00",
+      "last_crawl": null,
+      "success_count": 0,
+      "fail_count": 0,
+      "enabled": true
+    }
+  ]
+}
