@@ -5,14 +5,13 @@ import time
 import random
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from konlpy.tag import Okt
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import LatentDirichletAllocation
+# 분석 모듈 import
+from analysis import analyze_sentiment, topic_modeling
 
 # --- 설정 부분 ---
-PRODUCT_ID = "5753732771"  # 분석하고 싶은 상품의 ID
+PRODUCT_ID = "5753732771"
 OUTPUT_FILE_NAME = "reviews.csv"
-NUM_TOPICS = 5 # 분류할 주제(토픽)의 개수
+NUM_TOPICS = 5
 
 # 다양한 User-Agent 목록
 USER_AGENTS = [
@@ -27,14 +26,12 @@ USER_AGENTS = [
 # 프록시 설정 (필요한 경우 추가)
 PROXIES = [
     # 예시: {'http': 'http://proxy1:port', 'https': 'https://proxy1:port'},
-    # 실제 프록시 서버가 있을 경우 여기에 추가
 ]
 
 def get_session_with_retry():
     """재시도 로직이 포함된 세션을 생성합니다."""
     session = requests.Session()
     
-    # 재시도 전략 설정
     retry_strategy = Retry(
         total=3,
         backoff_factor=1,
@@ -66,7 +63,6 @@ def get_random_headers(product_id):
         "Pragma": "no-cache"
     }
     
-    # 랜덤하게 일부 헤더 추가/제거
     if random.random() > 0.5:
         headers["DNT"] = "1"
     
@@ -88,26 +84,17 @@ def crawl_reviews(product_id):
     failed_attempts = 0
     max_failed_attempts = 3
     
-    # 세션 생성
     session = get_session_with_retry()
     
-    # 상품의 merchant ID와 origin product ID를 가져오기 위한 초기 요청
     print("상품 정보를 가져오는 중...")
     
-    for attempt in range(3):  # 최대 3번 시도
+    for attempt in range(3):
         try:
             headers = get_random_headers(product_id)
             info_url = f"https://smartstore.naver.com/i/v1/products/{product_id}/summary"
-            
-            # 프록시 사용 (설정된 경우)
             proxy = random.choice(PROXIES) if PROXIES else None
             
-            info_res = session.get(
-                info_url, 
-                headers=headers, 
-                proxies=proxy,
-                timeout=10
-            )
+            info_res = session.get(info_url, headers=headers, proxies=proxy, timeout=10)
             
             if info_res.status_code == 200:
                 break
@@ -123,7 +110,6 @@ def crawl_reviews(product_id):
             print(f"시도 {attempt + 1} 실패: {e}")
             if attempt < 2:
                 random_delay(5, 10)
-    
     else:
         print("상품 정보를 가져오는 데 실패했습니다. 모든 재시도 완료.")
         return None
@@ -138,7 +124,6 @@ def crawl_reviews(product_id):
         return None
 
     while True:
-        # 리뷰 API URL
         url = (
             f"https://smartstore.naver.com/main/products/{origin_product_no}/reviews/writable-reviews"
             f"?page={page}&sort=REVIEW_RANKING"
@@ -146,20 +131,11 @@ def crawl_reviews(product_id):
         )
         
         try:
-            # 매 요청마다 새로운 헤더 생성
             headers = get_random_headers(product_id)
-            
-            # 프록시 사용 (설정된 경우)
             proxy = random.choice(PROXIES) if PROXIES else None
             
-            res = session.get(
-                url, 
-                headers=headers, 
-                proxies=proxy,
-                timeout=15
-            )
+            res = session.get(url, headers=headers, proxies=proxy, timeout=15)
             
-            # 상태 코드 체크
             if res.status_code == 429:
                 print(f"Rate limit 감지됨. 60초 대기 후 재시도...")
                 time.sleep(60)
@@ -174,7 +150,7 @@ def crawl_reviews(product_id):
                 if failed_attempts >= max_failed_attempts:
                     print("접근이 지속적으로 거부되어 크롤링을 중단합니다.")
                     break
-                random_delay(60, 120)  # 1-2분 대기
+                random_delay(60, 120)
                 continue
             elif res.status_code != 200:
                 print(f"예상치 못한 상태 코드: {res.status_code}")
@@ -184,8 +160,7 @@ def crawl_reviews(product_id):
                 random_delay(10, 30)
                 continue
             
-            # 성공적인 응답 처리
-            failed_attempts = 0  # 성공시 실패 카운트 리셋
+            failed_attempts = 0
             
             data = res.json()
             reviews = data.get('contents', [])
@@ -195,7 +170,6 @@ def crawl_reviews(product_id):
                 break
 
             for review in reviews:
-                # 옵션이 있는 경우 텍스트 조합
                 option_text = " / ".join([opt['optionContent'] for opt in review.get('productOptionContents', []) if 'optionContent' in opt])
                 
                 all_reviews.append({
@@ -210,7 +184,6 @@ def crawl_reviews(product_id):
             print(f"{page} 페이지의 리뷰 {len(reviews)}건을 가져왔습니다. (총 {len(all_reviews)}건)")
             page += 1
             
-            # 랜덤 지연 시간 적용 (2-5초)
             random_delay(2, 5)
 
         except requests.exceptions.RequestException as e:
@@ -233,60 +206,6 @@ def crawl_reviews(product_id):
             continue
             
     return pd.DataFrame(all_reviews)
-
-# 이하 analyze_sentiment, topic_modeling, if __name__ == '__main__': 부분은 이전과 동일합니다.
-# ... (이전 코드와 동일)
-def analyze_sentiment(text, positive_keywords, negative_keywords):
-    """간단한 키워드 기반으로 긍정/부정 점수를 계산합니다."""
-    score = 0
-    for keyword in positive_keywords:
-        if keyword in text:
-            score += 1
-    for keyword in negative_keywords:
-        if keyword in text:
-            score -= 1
-    
-    if score > 0:
-        return '긍정'
-    elif score < 0:
-        return '부정'
-    else:
-        return '중립'
-
-def topic_modeling(df, num_topics):
-    """LDA를 사용하여 리뷰 데이터의 주제를 분석합니다."""
-    okt = Okt()
-    
-    def tokenize(text):
-        if isinstance(text, str):
-            return [token for token in okt.nouns(text) if len(token) > 1]
-        return []
-
-    df['tokens'] = df['content'].apply(tokenize)
-    
-    texts = [" ".join(tokens) for tokens in df['tokens']]
-
-    if not any(texts):
-        print("분석할 텍스트가 없습니다. 토픽 모델링을 건너뜁니다.")
-        df['topic'] = '분석 불가'
-        return df
-
-    vectorizer = TfidfVectorizer(max_features=1000, max_df=0.95, min_df=2)
-    tfidf_matrix = vectorizer.fit_transform(texts)
-    
-    lda = LatentDirichletAllocation(n_components=num_topics, random_state=42)
-    lda.fit(tfidf_matrix)
-    
-    topic_results = lda.transform(tfidf_matrix)
-    df['topic'] = topic_results.argmax(axis=1)
-
-    feature_names = vectorizer.get_feature_names_out()
-    for topic_idx, topic in enumerate(lda.components_):
-        top_keywords = [feature_names[i] for i in topic.argsort()[:-10 - 1:-1]]
-        print(f"토픽 #{topic_idx}: {', '.join(top_keywords)}")
-        
-    return df
-
 
 if __name__ == '__main__':
     review_df = crawl_reviews(PRODUCT_ID)
