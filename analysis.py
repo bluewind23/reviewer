@@ -1,6 +1,7 @@
 from konlpy.tag import Okt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
+import logging
 
 def analyze_sentiment(text, positive_keywords, negative_keywords):
     """간단한 키워드 기반으로 긍정/부정 점수를 계산합니다."""
@@ -36,7 +37,7 @@ def topic_modeling(df, num_topics):
     texts = [" ".join(tokens) for tokens in df['tokens']]
 
     if not any(texts):
-        print("분석할 텍스트가 없습니다. 토픽 모델링을 건너뜁니다.")
+        logging.warning("분석할 텍스트가 없어 토픽 모델링을 건너뜁니다.")
         df['topic'] = '분석 불가'
         return df
 
